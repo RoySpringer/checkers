@@ -16,12 +16,18 @@ export default class NodeView {
     this.removePieces();
     if (piece) {
       this.view.classList.add(`piece-${piece.color}`);
+      if (this._model.willHit) {
+        this.view.classList.add(`piece-hit`);
+      } else {
+        this.view.classList.remove(`piece-hit`);
+      }
     }
   }
 
   private removePieces(): void {
     for (const color of PIECE_COLORS) {
       this.view.classList.remove(`piece-${color}`);
+      this.view.classList.remove(`piece-hit`);
     }
   }
 

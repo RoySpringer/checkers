@@ -14,6 +14,7 @@ export default class Game {
   private _localPlayer?: Player;
   private _currentPlayer?: Player;
   private _selectedNode?: Node;
+  private _posibleHits: Node[];
   private _players: Player[] = [];
   private _turns: number = 0;
 
@@ -48,16 +49,33 @@ export default class Game {
         this._board.clearHighlights();
         if (this._selectedNode === node) {
           this._selectedNode = undefined;
+          this._posibleHits = [];
           return;
         }
         this._selectedNode = node;
-        const highlightNodes = this._board.getAvailableNodes(node.id);
-        for (const highlight of highlightNodes) {
+        const { availableNodes, hitNodes } = this._board.getAvailableNodes(
+          node.id
+        );
+
+        this._posibleHits = hitNodes;
+        for (const highlight of availableNodes) {
           highlight.placePiece(new Piece("highlight"));
         }
       } else if (piece.color === "highlight") {
         this._board.clearHighlights();
-        let piece = this._selectedNode.removePiece();
+        if (this._posibleHits.length > 0) {
+          console.log(this._posibleHits);
+          for (const hitNode of this._posibleHits) {
+            console.log({ hitNode, selected: this._selectedNode, node });
+            if (
+              (this._selectedNode!.x < hitNode.x && node.x > hitNode.x) ||
+              (node.x < hitNode.x && this._selectedNode!.x > hitNode.x)
+            ) {
+              hitNode.removePiece();
+            }
+          }
+        }
+        let piece = this._selectedNode!.removePiece();
         if (!piece) {
           piece = new Piece(this._currentPlayer?.color!);
         }

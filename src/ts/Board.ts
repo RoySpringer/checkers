@@ -16,8 +16,8 @@ export class BoardEvent extends Event {
 export default class Board extends EventTarget {
   private _width: number = 0;
   private _height: number = 0;
-  private nodes: Node[][] = [];
-  private nodeViews: NodeView[] = [];
+  private _nodes: Node[][] = [];
+  private _nodeViews: NodeView[] = [];
 
   constructor(width: number, height: number) {
     super();
@@ -29,11 +29,11 @@ export default class Board extends EventTarget {
   private generateGrid(): void {
     let id: number = 0;
     for (let y = 0; y < this.height; y++) {
-      this.nodes[y] = [];
+      this._nodes[y] = [];
       for (let x = 0; x < this.width; x++) {
         const node = new Node(id, x, y, (id + y) % 2 === 0);
-        this.nodes[y][x] = node;
-        this.nodeViews[id] = new NodeView(node);
+        this._nodes[y][x] = node;
+        this._nodeViews[id] = new NodeView(node);
         id++;
       }
     }
@@ -51,7 +51,7 @@ export default class Board extends EventTarget {
       const div = document.createElement("div");
       div.classList.add("grid-row");
       for (let x = 0; x < this.width; x++) {
-        const nodeView = this.nodeViews[id];
+        const nodeView = this._nodeViews[id];
         nodeView.view.addEventListener("click", (e) => this.handleClickView(e));
         div.append(nodeView.view);
         id++;
@@ -65,7 +65,7 @@ export default class Board extends EventTarget {
     // Setup black
     for (let y = 0; y < 3; y++) {
       for (let x = 0; x < this.width; x++) {
-        const currentNode = this.nodes[y][x];
+        const currentNode = this._nodes[y][x];
         if (currentNode.isAvailable) {
           currentNode.placePiece(new Piece("black"));
         }
@@ -75,7 +75,7 @@ export default class Board extends EventTarget {
     // Setup white
     for (let y = this.height - 1; y >= this.height - 3; y--) {
       for (let x = 0; x < this.width; x++) {
-        const currentNode = this.nodes[y][x];
+        const currentNode = this._nodes[y][x];
         if (currentNode.isAvailable) {
           currentNode.placePiece(new Piece("white"));
         }
@@ -92,13 +92,14 @@ export default class Board extends EventTarget {
   public getGridNodeXY(x: number, y: number): Node | undefined {
     if (x < 0 || x > this.width) return undefined;
     if (y < 0 || y > this.height) return undefined;
-    return this.nodes[y][x];
+    return this._nodes[y][x];
   }
 
   public clearHighlights(): void {
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
-        const currentNode = this.nodes[y][x];
+        const currentNode = this._nodes[y][x];
+        currentNode.willHit = false;
         if (currentNode.getPiece()?.color === "highlight") {
           currentNode.removePiece();
         }
@@ -106,17 +107,22 @@ export default class Board extends EventTarget {
     }
   }
 
-  public getAvailableNodes(index: number): Node[] {
+  public getAvailableNodes(index: number): {
+    availableNodes: Node[];
+    hitNodes: Node[];
+  } {
     const node = this.getGridNode(index);
     let nodes: Node[] = [];
+    let hitNodes = [];
     if (node && node.getPiece() !== null) {
-      const color: string = node.getPiece().color;
+      const color: string = node.getPiece()!.color;
       if (color === "black") {
         nodes = this.getBottomNeighbors(node);
         const emptyNodes = nodes.filter((item) => !item.hasPiece());
         const colorNodes = nodes.filter(
           (item) => item.getPiece()?.color === "white"
         );
+        // Check hits
         for (const colorNode of colorNodes) {
           let x = colorNode.x - 1;
           let y = colorNode.y + 1;
@@ -125,18 +131,26 @@ export default class Board extends EventTarget {
             x = colorNode.x + 1;
           }
           if (x < 0 || x >= this.width) continue;
-          const nextNode = this.nodes[y][x];
+          const nextNode = this._nodes[y][x];
           if (!nextNode.hasPiece()) {
-            emptyNodes.push(nextNode);
+            colorNode.willHit = true;
+            hitNodes.push(colorNode);
+            hitNodes.push(nextNode);
           }
         }
-        nodes = emptyNodes;
+        // User must hit player
+        if (hitNodes.length > 0) {
+          nodes = hitNodes;
+        } else {
+          nodes = emptyNodes;
+        }
       } else if (color === "white") {
         nodes = this.getTopNeighbors(node);
         const emptyNodes = nodes.filter((item) => !item.hasPiece());
         const colorNodes = nodes.filter(
           (item) => item.getPiece()?.color === "black"
         );
+        // Check hits
         for (const colorNode of colorNodes) {
           let x = colorNode.x - 1;
           let y = colorNode.y - 1;
@@ -145,23 +159,33 @@ export default class Board extends EventTarget {
             x = colorNode.x + 1;
           }
           if (x < 0 || x >= this.width) continue;
-          const nextNode = this.nodes[y][x];
+          const nextNode = this._nodes[y][x];
           if (!nextNode.hasPiece()) {
-            emptyNodes.push(nextNode);
+            colorNode.willHit = true;
+            hitNodes.push(colorNode);
+            hitNodes.push(nextNode);
           }
         }
-        nodes = emptyNodes;
+        // User must hit player
+        if (hitNodes.length > 0) {
+          nodes = hitNodes;
+        } else {
+          nodes = emptyNodes;
+        }
       }
     }
-    return nodes;
+    return {
+      availableNodes: nodes.filter((item) => !item.hasPiece()),
+      hitNodes: nodes.filter((item) => item.hasPiece()),
+    };
   }
 
   public getTopNeighbors(node: Node): Node[] {
     const nodes: Node[] = [];
     if (node.y - 1 >= 0) {
-      if (node.x - 1 >= 0) nodes.push(this.nodes[node.y - 1][node.x - 1]);
+      if (node.x - 1 >= 0) nodes.push(this._nodes[node.y - 1][node.x - 1]);
       if (node.x + 1 < this.width)
-        nodes.push(this.nodes[node.y - 1][node.x + 1]);
+        nodes.push(this._nodes[node.y - 1][node.x + 1]);
     }
     return nodes;
   }
@@ -171,11 +195,11 @@ export default class Board extends EventTarget {
     console.log(node);
     console.log(node.x - 1 >= 0);
     console.log(node.x + 1 < this.width);
-    console.log(this.nodes[node.y + 1][node.x - 1]);
+    console.log(this._nodes[node.y + 1][node.x - 1]);
     if (node.y + 1 < this.height) {
-      if (node.x - 1 >= 0) nodes.push(this.nodes[node.y + 1][node.x - 1]);
+      if (node.x - 1 >= 0) nodes.push(this._nodes[node.y + 1][node.x - 1]);
       if (node.x + 1 < this.width)
-        nodes.push(this.nodes[node.y + 1][node.x + 1]);
+        nodes.push(this._nodes[node.y + 1][node.x + 1]);
     }
     return nodes;
   }
@@ -195,7 +219,7 @@ export default class Board extends EventTarget {
     const node = event.target as HTMLDivElement;
     const nodeId = Number.parseInt(node.dataset.nodeId || "-1");
     if (nodeId != -1) {
-      const nodeView = this.nodeViews[nodeId];
+      const nodeView = this._nodeViews[nodeId];
       this.dispatchEvent(new BoardEvent(EVENT_BOARD_CLICKED, nodeView));
     }
   }

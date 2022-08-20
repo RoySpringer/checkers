@@ -70,6 +70,10 @@ main {
   background-color: rgb(151, 246, 146);
 }
 
+.node.piece-hit::after {
+  border: 2px solid red;
+}
+
 .node span {
   pointer-events: none;
   user-select: none;

@@ -8,6 +8,7 @@ export default class Node extends EventTarget implements GridNode {
   private _y: number;
   private _isAvailable: boolean;
   private _piece: Piece | null = null;
+  private _willHit: boolean = false;
 
   constructor(id: number, x: number, y: number, isAvailable: boolean) {
     super();
@@ -56,5 +57,14 @@ export default class Node extends EventTarget implements GridNode {
 
   get isAvailable(): boolean {
     return this._isAvailable;
+  }
+
+  get willHit(): boolean {
+    return this._willHit;
+  }
+
+  set willHit(value: boolean) {
+    this._willHit = value;
+    this.dispatchEvent(new Event(EVENT_UPDATED));
   }
 }
