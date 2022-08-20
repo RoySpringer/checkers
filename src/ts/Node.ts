@@ -2,7 +2,7 @@ import Piece from "./Piece";
 
 export const EVENT_UPDATED: string = "updated";
 
-export default class Node extends EventTarget implements GridNode {
+export default class Node extends EventTarget {
   private _id: number;
   private _x: number;
   private _y: number;

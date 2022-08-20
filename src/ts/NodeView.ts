@@ -7,11 +7,11 @@ export default class NodeView {
 
   constructor(model: Node) {
     this._model = model;
-    this._model.addEventListener(EVENT_UPDATED, (e) => this.updateView(e));
+    this._model.addEventListener(EVENT_UPDATED, () => this.updateView());
     this._view = this.createView();
   }
 
-  private updateView(event: Event): void {
+  private updateView(): void {
     const piece = this._model.getPiece();
     this.removePieces();
     if (piece) {

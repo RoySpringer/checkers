@@ -10,11 +10,11 @@ interface Player {
 
 export default class Game {
   private _board: Board;
-  private _boardElement?: Element;
-  private _localPlayer?: Player;
+  // private _boardElement?: Element;
+  // private _localPlayer?: Player;
   private _currentPlayer?: Player;
   private _selectedNode?: Node;
-  private _posibleHits: Node[];
+  private _posibleHits: Node[] = [];
   private _players: Player[] = [];
   private _turns: number = 0;
 
@@ -32,7 +32,7 @@ export default class Game {
   }
 
   public setupBoard() {
-    this._boardElement = this._board.drawBoard();
+    this._board.drawBoard();
     this._board.addEventListener(EVENT_BOARD_CLICKED, (e) =>
       this.handleClick(e)
     );
