@@ -1,13 +1,7 @@
-/**
- * This file is the entrypoint of browser builds.
- * The code executes when loaded in a browser.
- */
-
-// import { generateGrid, startGame } from "./grid";
-
-// generateGrid();
-// startGame();
-
 import Game from "./Game";
+import { io, Socket } from "socket.io-client";
 
-new Game();
+// please note that the types are reversed
+const socket: Socket = io();
+
+new Game(socket);
