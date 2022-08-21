@@ -43,6 +43,7 @@ export default class Game {
   private _socket: Socket;
   private _gameObject?: GameObject;
   private _moves: NodeUpdate[] = [];
+  private _didHit: boolean = false;
 
   constructor(socket: Socket) {
     this._board = new Board(8, 8);
@@ -221,6 +222,7 @@ export default class Game {
 
         hitNode?.removePiece();
         if (hitNode) {
+          this._didHit = true;
           this._moves.push({ id: hitNode.id, action: "removed" });
         }
         let piece = this._selectedNode.removePiece();
@@ -228,12 +230,13 @@ export default class Game {
         if (!piece) {
           piece = new Piece(this._currentPlayer?.color!);
         }
+        node.placePiece(piece);
         this._moves.push({
           id: node.id,
           action: "changed",
           color: piece.color,
         });
-        node.placePiece(piece);
+        this.sendMoves();
         this.handleTurn();
       }
     }
@@ -254,14 +257,21 @@ export default class Game {
     const canHit = this._board.canColorHitOppositeNode(
       this._currentPlayer.color
     );
-    if (canHit) return;
+    if (this._didHit && canHit) return;
+    this._didHit = false;
+    this.socket.emit("endTurn", { gameId: this._gameObject?.id });
+  }
+
+  /**
+   * Sends the moves to the server
+   */
+  private sendMoves() {
     this.socket.emit("sendMoves", {
       gameId: this._gameObject?.id,
       playerId: this._localPlayer?.id,
       moves: this._moves,
     });
     this._moves = [];
-    this.socket.emit("endTurn", { gameId: this._gameObject?.id });
   }
 
   /**
