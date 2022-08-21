@@ -17,13 +17,14 @@
   },
   "type": "module",
   "scripts": {
-    "start": "node esbuild.config.js -w",
+    "start": "npm run build && npm run server",
+    "watch": "node esbuild.config.js -w",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx",
     "clean": "rm -rf dist build package",
     "ts-node": "ts-node",
-    "build": "tsc -p tsconfig.json",
+    "build": "node esbuild.config.js",
     "build-all": "npm run clean && npm run build",
-    "server": "npm run build && node server.js"
+    "server": "node server.js"
   },
   "devDependencies": {
     "@types/jest": "^26.0.21",

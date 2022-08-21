@@ -9,12 +9,12 @@ npm install
 
 ```bash
 # To start the game (will open to browser tabs)
-npm run server
+npm start
 ```
 
 ```bash
 # To start developing start the watcher
-npm start
+npm run watch
 
 # Run the server
 npm run server
