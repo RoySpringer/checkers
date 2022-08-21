@@ -5,11 +5,19 @@
 ```bash
 # Install dependencies
 npm install
-
-# Now you can run various yarn commands:
-npm start
-npm run lint
-npm run build-all
-npm run ts-node <filename>
-...
 ```
+
+```bash
+# To start the game (will open to browser tabs)
+npm run server
+```
+
+```bash
+# To start developing start the watcher
+npm start
+
+# Run the server
+npm run server
+```
+
+Note: for server changes you still have to manually restart the server.
