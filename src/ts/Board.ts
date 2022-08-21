@@ -51,7 +51,7 @@ export default class Board extends EventTarget {
    * @param selector The selector where the board should be drawn
    * @returns {Element} Board with all the nodes
    */
-  public drawBoard(selector = "main-area"): Element {
+  public drawBoard(selector = ".main-area"): Element {
     const mainArea = this.getMainArea(selector);
     let id = 0;
     for (let y = 0; y < this.height; y++) {
@@ -68,6 +68,9 @@ export default class Board extends EventTarget {
     return mainArea;
   }
 
+  /**
+   * Setup both sides with pieces
+   */
   public setupPieces() {
     // Setup black
     for (let y = 0; y < 3; y++) {
@@ -90,18 +93,33 @@ export default class Board extends EventTarget {
     }
   }
 
+  /**
+   * Gets the node based on index
+   * @param index The id of the node
+   * @returns The node or undefined if note within the board range
+   */
   public getGridNode(index: number): Node | undefined {
     const row = Math.floor(index / this.width);
     const col = Math.floor(index % this.width);
     return this.getGridNodeXY(col, row);
   }
 
+  /**
+   * Gets the node based on x, y position
+   * @param x x-pos of the node
+   * @param y y-pos of the node
+   * @returns The node or undefined if note within the board range
+   */
   public getGridNodeXY(x: number, y: number): Node | undefined {
     if (x < 0 || x >= this.width) return undefined;
     if (y < 0 || y >= this.height) return undefined;
     return this._nodes[y][x];
   }
 
+  /**
+   * Clears the plieces with the highlight piece on it
+   * and removes the willHit boolean
+   */
   public clearHighlights(): void {
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
@@ -114,6 +132,11 @@ export default class Board extends EventTarget {
     }
   }
 
+  /**
+   * Get all the posible moves for a node, following the must hit rule.
+   * @param index The id of the node
+   * @returns Object with the availableNodes and the posible hitNodes
+   */
   public getAvailableMoveNodes(index: number): {
     availableNodes: Node[];
     hitNodes: Node[];
@@ -147,6 +170,11 @@ export default class Board extends EventTarget {
     };
   }
 
+  /**
+   * Get all the available top neighbors
+   * @param node The node to find the neighbors for
+   * @returns List of all the top neighbors diagonally
+   */
   public getTopNeighbors(node: Node): Node[] {
     const nodes: Node[] = [];
     if (node.y - 1 >= 0) {
@@ -157,6 +185,11 @@ export default class Board extends EventTarget {
     return nodes;
   }
 
+  /**
+   * Get all the available bottom neighbors
+   * @param node The node to find the neighbors for
+   * @returns List of all the bottom neighbors diagonally
+   */
   public getBottomNeighbors(node: Node): Node[] {
     const nodes: Node[] = [];
     if (node.y + 1 < this.height) {
@@ -167,14 +200,30 @@ export default class Board extends EventTarget {
     return nodes;
   }
 
+  /**
+   * Get all the available neighbors
+   * @param node The node to find the neighbors for
+   * @returns List of all the neighbors diagonally
+   */
   public getAllNeighbors(node: Node): Node[] {
     return [...this.getBottomNeighbors(node), ...this.getTopNeighbors(node)];
   }
 
+  /**
+   * Checks whether the node can hit another node
+   * @param node The node to check if it can hit
+   * @returns true or false
+   */
   public nodeCanHit(node: Node): boolean {
     return this.getHits(node).hits.length != 0;
   }
 
+  /**
+   * Returns all the possible hits it can make.
+   * @param node The node to do the check upon
+   * @param showHits Whether or not to highlight the hit nodes
+   * @returns Returns an object with the hits node array and the hitSpots array(Where the spot is it can go.)
+   */
   public getHits(
     node: Node,
     showHits: boolean = false
@@ -190,7 +239,7 @@ export default class Board extends EventTarget {
       (item) => item.hasPiece() && item.getPiece()?.color === oppositeColor
     );
 
-    // Check hits top
+    // Check hits
     for (const colorNode of filterdNeighbors) {
       for (const hitPattern of HIT_MAP) {
         const toNode = this.getGridNodeXY(
@@ -215,6 +264,12 @@ export default class Board extends EventTarget {
     return { hits, hitSpots };
   }
 
+  /**
+   * Checks wheter the toNode is a possible hitArea
+   * @param fromNode The from node
+   * @param toNode The to node
+   * @returns true or false whether the toNode is a possible available hit area to go to and a valid node.
+   */
   public isInHitMap(fromNode: Node, toNode: Node): boolean {
     for (const hitLoc of HIT_MAP) {
       const currentToNode = this.getGridNodeXY(
@@ -228,6 +283,13 @@ export default class Board extends EventTarget {
     return false;
   }
 
+  /**
+   * Returns the node it will hit.
+   * @param fromNode The from node
+   * @param toNode The to node
+   * @param mustHaveOppositePiece boolean to only check of the opposite color
+   * @returns A node it will hit or none if none where found.
+   */
   public getHitNode(
     fromNode: Node,
     toNode: Node,
@@ -250,16 +312,30 @@ export default class Board extends EventTarget {
     return this.getGridNodeXY(x, y);
   }
 
+  /**
+   * Return the available nodes.
+   * @returns The nodes with the boolean isAvailable true
+   */
   public getAvailableNodes(): Node[] {
     return this._nodes.flat().filter((item) => item.isAvailable);
   }
 
+  /**
+   * Returns the available color pieces.
+   * @param color The color of the piece
+   * @returns The available nodes with a color piece on it.
+   */
   public getNodesByColor(color: Color): Node[] {
     return this.getAvailableNodes().filter(
       (item) => item.hasPiece() && item.getPiece()?.color === color
     );
   }
 
+  /**
+   * Returns whether or not the color can hit the other color.
+   * @param color The color of the piece
+   * @returns If the color can hit the other color
+   */
   public canColorHitOppositeNode(color: PieceColor): boolean {
     const coloredNodes = this.getNodesByColor(color);
     for (const colorNode of coloredNodes) {
@@ -269,7 +345,11 @@ export default class Board extends EventTarget {
     return false;
   }
 
-  // Get the diff for the board.
+  /**
+   * Return the main board Element
+   * @param selector the selector string
+   * @returns the Element of where the board is drawn
+   */
   private getMainArea(selector: string): Element {
     let mainArea = document.querySelector(selector);
     if (mainArea === null) {
@@ -280,6 +360,10 @@ export default class Board extends EventTarget {
     return mainArea;
   }
 
+  /**
+   * Handles the event of a node view being clicked
+   * @param event
+   */
   private handleClickView(event: Event) {
     const node = event.target as HTMLDivElement;
     const nodeId = Number.parseInt(node.dataset.nodeId || "-1");
@@ -289,7 +373,9 @@ export default class Board extends EventTarget {
     }
   }
 
-  // Getters / Setters
+  /**
+   * Getters and setters
+   */
   public get width(): number {
     return this._width;
   }

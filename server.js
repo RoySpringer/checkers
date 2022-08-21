@@ -29,6 +29,7 @@ app.get("/", function (req, res) {
 io.on("connection", (socket) => {
   console.log("a user connected", socket.id);
   let gameObject;
+  // Create the game object
   if (gameManager.shouldCreateGame()) {
     gameObject = gameManager.createGame();
     socket.emit("gameCreated", gameObject);
@@ -37,6 +38,7 @@ io.on("connection", (socket) => {
     socket.emit("gameJoined", gameObject);
   }
 
+  // Listen for a create player event on a game id.
   socket.on("createPlayer", ({ gameId, name }) => {
     const player = gameManager.addPlayerGame(gameId, name, socket.id);
     if (player) {
@@ -56,6 +58,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Handles the end turn of a user
   socket.on("endTurn", ({ gameId }) => {
     const game = gameManager.changeTurn(gameId);
     gameManager.getPlayers(gameId).forEach((player) => {
@@ -63,9 +66,9 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Handles the send moves and pass them to the other user.
   socket.on("sendMoves", ({ gameId, playerId, moves }) => {
     const opponent = gameManager.getOpponent(gameId, playerId);
-    console.log(moves);
     if (opponent) {
       io.to(opponent.socketId).emit("updateBoard", moves);
     }

@@ -42,7 +42,9 @@ export default class Node extends EventTarget {
     return this._piece?.color === "black" || this._piece?.color === "white";
   }
 
-  // Getter / Setters
+  /**
+   * Getters and setters
+   */
   get id(): number {
     return this._id;
   }

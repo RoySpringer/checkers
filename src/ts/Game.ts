@@ -80,11 +80,13 @@ export default class Game {
       this.setupPlayers(gameObject);
     });
     this.socket.on("updateBoard", (nodesUpdate: NodeUpdate[]) => {
-      console.log(nodesUpdate);
       this.handleMoves(nodesUpdate);
     });
   }
 
+  /**
+   * Promps the playername untill filled in.
+   */
   public askPlayerName(): void {
     if (!this._gameObject) return;
     let name = null;
@@ -95,27 +97,47 @@ export default class Game {
     this.socket.emit("createPlayer", { gameId: this._gameObject!.id, name });
   }
 
+  /**
+   * Syncs the game
+   * @param gameObject The new game state object
+   */
   public syncGame(gameObject: GameObject): void {
     this._gameObject = gameObject;
     this._currentPlayer = gameObject.currentPlayer;
   }
 
+  /**
+   * Sets the game
+   * @param gameObject The new game state object
+   */
   public setupGame(gameObject: GameObject): void {
     this._gameObject = gameObject;
   }
 
+  /**
+   * Setup the local player
+   * @param player The player
+   */
   public setupLocalPlayer(player: Player) {
     console.log("Setup Local Player", player);
     const { id, name, color, points } = player;
     this._localPlayer = { id, name, color, points };
   }
 
+  /**
+   * Setup the opponent
+   * @param player The player
+   */
   public setupOpponentPlayer(player: Player) {
     console.log("Setup Opponent Player", player);
     const { id, name, color, points } = player;
     this._opponent = { id, name, color, points };
   }
 
+  /**
+   * Setup the current player and resync all the players
+   * @param gameObject The new game state object
+   */
   public setupPlayers(gameObject: GameObject) {
     this._currentPlayer = gameObject.currentPlayer;
     for (const player of gameObject.players) {
@@ -128,6 +150,9 @@ export default class Game {
     }
   }
 
+  /**
+   * Set up the board. Draws the board and add the listeners
+   */
   public setupBoard() {
     this._board.drawBoard();
     this._board.addEventListener(EVENT_BOARD_CLICKED, (e) =>
@@ -136,6 +161,10 @@ export default class Game {
     this._board.setupPieces();
   }
 
+  /**
+   * The moves handler
+   * @param moves Moves list. A custom object to update the board
+   */
   private handleMoves(moves: NodeUpdate[]) {
     for (const move of moves) {
       const currentNode = this._board.getGridNode(move.id);
@@ -151,6 +180,10 @@ export default class Game {
     }
   }
 
+  /**
+   * Handles all the games click logic
+   * @param event BoardEvent send by the board.
+   */
   private handleClick(event: Event) {
     const boardEvent = event as BoardEvent;
     const piece = boardEvent.nodeView.model.getPiece();
@@ -206,17 +239,22 @@ export default class Game {
     }
   }
 
+  /**
+   * Reset the selected node
+   */
   public resetSelected() {
     this._selectedNode = undefined;
   }
 
+  /**
+   * Handles the end turn state for the player
+   */
   private handleTurn() {
     if (!this._currentPlayer) return;
     const canHit = this._board.canColorHitOppositeNode(
       this._currentPlayer.color
     );
     if (canHit) return;
-    console.log(this._moves);
     this.socket.emit("sendMoves", {
       gameId: this._gameObject?.id,
       playerId: this._localPlayer?.id,
@@ -226,7 +264,9 @@ export default class Game {
     this.socket.emit("endTurn", { gameId: this._gameObject?.id });
   }
 
-  // Getters / Setters
+  /**
+   * Getters and setters
+   */
   get socket(): Socket {
     return this._socket;
   }
