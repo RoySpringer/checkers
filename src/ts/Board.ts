@@ -1,6 +1,13 @@
 import Node from "./Node";
 import NodeView from "./NodeView";
-import Piece from "./Piece";
+import Piece, { getOppositeColor } from "./Piece";
+
+const HIT_MAP = [
+  { x: -2, y: -2 },
+  { x: 2, y: -2 },
+  { x: -2, y: 2 },
+  { x: 2, y: 2 },
+];
 
 export const EVENT_BOARD_CLICKED: string = "board_clicked";
 
@@ -90,8 +97,8 @@ export default class Board extends EventTarget {
   }
 
   public getGridNodeXY(x: number, y: number): Node | undefined {
-    if (x < 0 || x > this.width) return undefined;
-    if (y < 0 || y > this.height) return undefined;
+    if (x < 0 || x >= this.width) return undefined;
+    if (y < 0 || y >= this.height) return undefined;
     return this._nodes[y][x];
   }
 
@@ -112,71 +119,31 @@ export default class Board extends EventTarget {
     hitNodes: Node[];
   } {
     const node = this.getGridNode(index);
-    let nodes: Node[] = [];
-    let hitNodes = [];
+    let availableNodes: Node[] = [];
+    let hitNodes: Node[] = [];
     if (node && node.getPiece() !== null) {
       const color: string = node.getPiece()!.color;
+      let emptyNodes: Node[] = [];
       if (color === "black") {
-        nodes = this.getBottomNeighbors(node);
-        const emptyNodes = nodes.filter((item) => !item.hasPiece());
-        const colorNodes = nodes.filter(
-          (item) => item.getPiece()?.color === "white"
-        );
-        // Check hits
-        for (const colorNode of colorNodes) {
-          let x = colorNode.x - 1;
-          let y = colorNode.y + 1;
-          if (y > this.height) break;
-          if (node.x < colorNode.x) {
-            x = colorNode.x + 1;
-          }
-          if (x < 0 || x >= this.width) continue;
-          const nextNode = this._nodes[y][x];
-          if (!nextNode.hasPiece()) {
-            colorNode.willHit = true;
-            hitNodes.push(colorNode);
-            hitNodes.push(nextNode);
-          }
-        }
-        // User must hit player
-        if (hitNodes.length > 0) {
-          nodes = hitNodes;
-        } else {
-          nodes = emptyNodes;
-        }
+        availableNodes = this.getBottomNeighbors(node);
+        emptyNodes = availableNodes.filter((item) => !item.hasPiece());
       } else if (color === "white") {
-        nodes = this.getTopNeighbors(node);
-        const emptyNodes = nodes.filter((item) => !item.hasPiece());
-        const colorNodes = nodes.filter(
-          (item) => item.getPiece()?.color === "black"
-        );
-        // Check hits
-        for (const colorNode of colorNodes) {
-          let x = colorNode.x - 1;
-          let y = colorNode.y - 1;
-          if (y < 0) break;
-          if (node.x < colorNode.x) {
-            x = colorNode.x + 1;
-          }
-          if (x < 0 || x >= this.width) continue;
-          const nextNode = this._nodes[y][x];
-          if (!nextNode.hasPiece()) {
-            colorNode.willHit = true;
-            hitNodes.push(colorNode);
-            hitNodes.push(nextNode);
-          }
-        }
+        availableNodes = this.getTopNeighbors(node);
+        emptyNodes = availableNodes.filter((item) => !item.hasPiece());
+      }
+      availableNodes = emptyNodes;
+
+      // Check hits
+      const { hits, hitSpots } = this.getHits(node, true);
+      if (hits.length > 0) {
         // User must hit player
-        if (hitNodes.length > 0) {
-          nodes = hitNodes;
-        } else {
-          nodes = emptyNodes;
-        }
+        availableNodes = hitSpots;
+        hitNodes = hits;
       }
     }
     return {
-      availableNodes: nodes.filter((item) => !item.hasPiece()),
-      hitNodes: nodes.filter((item) => item.hasPiece()),
+      availableNodes,
+      hitNodes,
     };
   }
 
@@ -192,16 +159,95 @@ export default class Board extends EventTarget {
 
   public getBottomNeighbors(node: Node): Node[] {
     const nodes: Node[] = [];
-    console.log(node);
-    console.log(node.x - 1 >= 0);
-    console.log(node.x + 1 < this.width);
-    console.log(this._nodes[node.y + 1][node.x - 1]);
     if (node.y + 1 < this.height) {
       if (node.x - 1 >= 0) nodes.push(this._nodes[node.y + 1][node.x - 1]);
       if (node.x + 1 < this.width)
         nodes.push(this._nodes[node.y + 1][node.x + 1]);
     }
     return nodes;
+  }
+
+  public getAllNeighbors(node: Node): Node[] {
+    return [...this.getBottomNeighbors(node), ...this.getTopNeighbors(node)];
+  }
+
+  public nodeCanHit(node: Node): boolean {
+    return this.getHits(node).hits.length != 0;
+  }
+
+  public getHits(
+    node: Node,
+    showHits: boolean = false
+  ): { hits: Node[]; hitSpots: Node[] } {
+    const hits: Node[] = [];
+    const hitSpots: Node[] = [];
+    if (!node.hasPiece()) return { hits, hitSpots };
+    const allNeighbors = this.getAllNeighbors(node);
+    const oppositeColor = getOppositeColor(
+      node.getPiece()!.color as "black" | "white"
+    );
+    const filterdNeighbors = allNeighbors.filter(
+      (item) => item.hasPiece() && item.getPiece()?.color === oppositeColor
+    );
+
+    // Check hits top
+    for (const colorNode of filterdNeighbors) {
+      for (const hitPattern of HIT_MAP) {
+        const toNode = this.getGridNodeXY(
+          node.x + hitPattern.x,
+          node.y + hitPattern.y
+        );
+        if (!toNode || toNode.hasPiece()) continue;
+        if (
+          ((node.x < colorNode.x && toNode.x > colorNode.x) ||
+            (toNode.x < colorNode.x && node.x > colorNode.x)) &&
+          ((node.y < colorNode.y && toNode.y > colorNode.y) ||
+            (toNode.y < colorNode.y && node.y > colorNode.y))
+        ) {
+          hits.push(colorNode);
+          hitSpots.push(toNode);
+          if (showHits) {
+            colorNode.willHit = true;
+          }
+        }
+      }
+    }
+    return { hits, hitSpots };
+  }
+
+  public isInHitMap(fromNode: Node, toNode: Node): boolean {
+    for (const hitLoc of HIT_MAP) {
+      const currentToNode = this.getGridNodeXY(
+        fromNode.x + hitLoc.x,
+        fromNode.y + hitLoc.y
+      );
+      if (!currentToNode) continue;
+      if (currentToNode.x === toNode.x && currentToNode.y === toNode.y)
+        return true;
+    }
+    return false;
+  }
+
+  public getHitNode(
+    fromNode: Node,
+    toNode: Node,
+    mustHaveOppositePiece: boolean = false
+  ): Node | undefined {
+    if (!this.isInHitMap(fromNode, toNode)) return undefined;
+    const x = toNode.x > fromNode.x ? fromNode.x + 1 : fromNode.x - 1;
+    const y = toNode.y > fromNode.y ? fromNode.y + 1 : fromNode.y - 1;
+    const node = this.getGridNodeXY(x, y);
+    if (mustHaveOppositePiece) {
+      if (node?.hasPiece() && fromNode.hasPiece()) {
+        const oppositeColor = getOppositeColor(
+          node.getPiece()?.color as "black" | "white"
+        );
+        if (fromNode.getPiece()?.color === oppositeColor) {
+          return node;
+        }
+      }
+    }
+    return this.getGridNodeXY(x, y);
   }
 
   // Get the diff for the board.

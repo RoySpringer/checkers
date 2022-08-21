@@ -63,19 +63,11 @@ export default class Game {
         }
       } else if (piece.color === "highlight") {
         this._board.clearHighlights();
-        if (this._posibleHits.length > 0) {
-          console.log(this._posibleHits);
-          for (const hitNode of this._posibleHits) {
-            console.log({ hitNode, selected: this._selectedNode, node });
-            if (
-              (this._selectedNode!.x < hitNode.x && node.x > hitNode.x) ||
-              (node.x < hitNode.x && this._selectedNode!.x > hitNode.x)
-            ) {
-              hitNode.removePiece();
-            }
-          }
-        }
-        let piece = this._selectedNode!.removePiece();
+        if (!this._selectedNode) return;
+
+        const hitNode = this._board.getHitNode(this._selectedNode, node, true);
+        hitNode?.removePiece();
+        let piece = this._selectedNode.removePiece();
         if (!piece) {
           piece = new Piece(this._currentPlayer?.color!);
         }
