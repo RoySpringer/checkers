@@ -1,6 +1,6 @@
 import Node from "./Node";
 import NodeView from "./NodeView";
-import Piece, { getOppositeColor } from "./Piece";
+import Piece, { Color, getOppositeColor, PieceColor } from "./Piece";
 
 const HIT_MAP = [
   { x: -2, y: -2 },
@@ -114,7 +114,7 @@ export default class Board extends EventTarget {
     }
   }
 
-  public getAvailableNodes(index: number): {
+  public getAvailableMoveNodes(index: number): {
     availableNodes: Node[];
     hitNodes: Node[];
   } {
@@ -184,7 +184,7 @@ export default class Board extends EventTarget {
     if (!node.hasPiece()) return { hits, hitSpots };
     const allNeighbors = this.getAllNeighbors(node);
     const oppositeColor = getOppositeColor(
-      node.getPiece()!.color as "black" | "white"
+      node.getPiece()!.color as PieceColor
     );
     const filterdNeighbors = allNeighbors.filter(
       (item) => item.hasPiece() && item.getPiece()?.color === oppositeColor
@@ -240,7 +240,7 @@ export default class Board extends EventTarget {
     if (mustHaveOppositePiece) {
       if (node?.hasPiece() && fromNode.hasPiece()) {
         const oppositeColor = getOppositeColor(
-          node.getPiece()?.color as "black" | "white"
+          node.getPiece()?.color as PieceColor
         );
         if (fromNode.getPiece()?.color === oppositeColor) {
           return node;
@@ -248,6 +248,25 @@ export default class Board extends EventTarget {
       }
     }
     return this.getGridNodeXY(x, y);
+  }
+
+  public getAvailableNodes(): Node[] {
+    return this._nodes.flat().filter((item) => item.isAvailable);
+  }
+
+  public getNodesByColor(color: Color): Node[] {
+    return this.getAvailableNodes().filter(
+      (item) => item.hasPiece() && item.getPiece()?.color === color
+    );
+  }
+
+  public canColorHitOppositeNode(color: PieceColor): boolean {
+    const coloredNodes = this.getNodesByColor(color);
+    for (const colorNode of coloredNodes) {
+      const canHit = this.nodeCanHit(colorNode);
+      if (canHit) return true;
+    }
+    return false;
   }
 
   // Get the diff for the board.

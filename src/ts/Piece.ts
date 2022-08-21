@@ -1,21 +1,20 @@
+export type Color = PieceColor | "highlight";
+export type PieceColor = "black" | "white";
+
 export const PIECE_COLORS: string[] = ["black", "white", "highlight"];
 
-export const getOppositeColor = (
-  color: "black" | "white"
-): "black" | "white" => {
-  return PIECE_COLORS[(PIECE_COLORS.indexOf(color) + 1) % 2] as
-    | "black"
-    | "white";
+export const getOppositeColor = (color: PieceColor): PieceColor => {
+  return PIECE_COLORS[(PIECE_COLORS.indexOf(color) + 1) % 2] as PieceColor;
 };
 
 export default class Piece {
-  private _color: "black" | "white" | "highlight";
+  private _color: Color;
 
-  constructor(color: "black" | "white" | "highlight") {
+  constructor(color: Color) {
     this._color = color;
   }
 
-  public get color(): "black" | "white" | "highlight" {
+  public get color(): Color {
     return this._color;
   }
 }

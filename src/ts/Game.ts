@@ -43,17 +43,19 @@ export default class Game {
     const boardEvent = event as BoardEvent;
     const piece = boardEvent.nodeView.model.getPiece();
     const node = boardEvent.nodeView.model;
-
+    if (!this._currentPlayer) return;
+    const canHit = this._board.canColorHitOppositeNode(
+      this._currentPlayer.color
+    );
     if (piece) {
       if (piece.color === this._currentPlayer?.color) {
         this._board.clearHighlights();
         if (this._selectedNode === node) {
-          this._selectedNode = undefined;
-          this._posibleHits = [];
+          this.resetSelected();
           return;
         }
         this._selectedNode = node;
-        const { availableNodes, hitNodes } = this._board.getAvailableNodes(
+        const { availableNodes, hitNodes } = this._board.getAvailableMoveNodes(
           node.id
         );
 
@@ -66,6 +68,12 @@ export default class Game {
         if (!this._selectedNode) return;
 
         const hitNode = this._board.getHitNode(this._selectedNode, node, true);
+        // Check if the player is hitting other player, if not this move is illegal
+        if (canHit && hitNode === undefined) {
+          this.resetSelected();
+          return;
+        }
+
         hitNode?.removePiece();
         let piece = this._selectedNode.removePiece();
         if (!piece) {
@@ -77,7 +85,17 @@ export default class Game {
     }
   }
 
+  public resetSelected() {
+    this._selectedNode = undefined;
+    this._posibleHits = [];
+  }
+
   private handleTurn() {
+    if (!this._currentPlayer) return;
+    const canHit = this._board.canColorHitOppositeNode(
+      this._currentPlayer.color
+    );
+    if (canHit) return;
     this._turns++;
     this._currentPlayer = this._players[this._turns % 2];
   }
