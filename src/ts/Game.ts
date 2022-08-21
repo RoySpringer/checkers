@@ -1,5 +1,5 @@
 import Board, { BoardEvent, EVENT_BOARD_CLICKED } from "./Board";
-import Piece from "./Piece";
+import Piece, { Color } from "./Piece";
 import Node from "./Node";
 import { Socket } from "socket.io-client";
 
@@ -10,6 +10,12 @@ interface Player {
   points: number;
 }
 
+interface NodeUpdate {
+  id: number;
+  action: "removed" | "changed";
+  color?: Color;
+}
+
 interface GameObject {
   id: number;
   players: Player[];
@@ -18,6 +24,7 @@ interface GameObject {
   turns: 0;
   /** Player id of the winnner */
   winner: number;
+  moves?: NodeUpdate[];
 }
 
 export const enum GAME_STATE {
@@ -33,19 +40,15 @@ export default class Game {
   private _opponent?: Player;
   private _currentPlayer?: Player;
   private _selectedNode?: Node;
-  private _players: Player[] = [];
-  private _turns: number = 0;
   private _socket: Socket;
   private _gameObject?: GameObject;
+  private _moves: NodeUpdate[] = [];
 
   constructor(socket: Socket) {
     this._board = new Board(8, 8);
     this._socket = socket;
     this.setupSocketListeners();
-
-    // this.setupPlayer();
     this.setupBoard();
-    // this.setupPlayers();
   }
 
   public setupSocketListeners(): void {
@@ -71,10 +74,14 @@ export default class Game {
     });
     this.socket.on("syncGameState", (gameObject: GameObject) => {
       console.log("GameSync", gameObject);
-      this.setupGame(gameObject);
+      this.syncGame(gameObject);
     });
     this.socket.on("gameStart", (gameObject: GameObject) => {
       this.setupPlayers(gameObject);
+    });
+    this.socket.on("updateBoard", (nodesUpdate: NodeUpdate[]) => {
+      console.log(nodesUpdate);
+      this.handleMoves(nodesUpdate);
     });
   }
 
@@ -88,15 +95,13 @@ export default class Game {
     this.socket.emit("createPlayer", { gameId: this._gameObject!.id, name });
   }
 
+  public syncGame(gameObject: GameObject): void {
+    this._gameObject = gameObject;
+    this._currentPlayer = gameObject.currentPlayer;
+  }
+
   public setupGame(gameObject: GameObject): void {
     this._gameObject = gameObject;
-    if (gameObject.players.length > 0) {
-      for (const player of gameObject.players) {
-        if (player.id !== this._localPlayer?.id) {
-          this.setupOpponentPlayer(player);
-        }
-      }
-    }
   }
 
   public setupLocalPlayer(player: Player) {
@@ -112,8 +117,15 @@ export default class Game {
   }
 
   public setupPlayers(gameObject: GameObject) {
-    this._players = gameObject.players;
     this._currentPlayer = gameObject.currentPlayer;
+    for (const player of gameObject.players) {
+      if (this._localPlayer?.id === player.id) {
+        this.setupLocalPlayer(player);
+      }
+      if (this._opponent?.id === player.id) {
+        this.setupOpponentPlayer(player);
+      }
+    }
   }
 
   public setupBoard() {
@@ -122,6 +134,21 @@ export default class Game {
       this.handleClick(e)
     );
     this._board.setupPieces();
+  }
+
+  private handleMoves(moves: NodeUpdate[]) {
+    for (const move of moves) {
+      const currentNode = this._board.getGridNode(move.id);
+      if (move.action === "removed") {
+        currentNode?.removePiece();
+      } else if (move.action === "changed") {
+        if (move.color) {
+          currentNode?.placePiece(new Piece(move.color));
+        } else {
+          console.error("Got change action without a color");
+        }
+      }
+    }
   }
 
   private handleClick(event: Event) {
@@ -160,10 +187,19 @@ export default class Game {
         }
 
         hitNode?.removePiece();
+        if (hitNode) {
+          this._moves.push({ id: hitNode.id, action: "removed" });
+        }
         let piece = this._selectedNode.removePiece();
+        this._moves.push({ id: this._selectedNode.id, action: "removed" });
         if (!piece) {
           piece = new Piece(this._currentPlayer?.color!);
         }
+        this._moves.push({
+          id: node.id,
+          action: "changed",
+          color: piece.color,
+        });
         node.placePiece(piece);
         this.handleTurn();
       }
@@ -180,8 +216,14 @@ export default class Game {
       this._currentPlayer.color
     );
     if (canHit) return;
-    this._turns++;
-    this._currentPlayer = this._players[this._turns % 2];
+    console.log(this._moves);
+    this.socket.emit("sendMoves", {
+      gameId: this._gameObject?.id,
+      playerId: this._localPlayer?.id,
+      moves: this._moves,
+    });
+    this._moves = [];
+    this.socket.emit("endTurn", { gameId: this._gameObject?.id });
   }
 
   // Getters / Setters

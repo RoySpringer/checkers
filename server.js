@@ -56,6 +56,21 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("endTurn", ({ gameId }) => {
+    const game = gameManager.changeTurn(gameId);
+    gameManager.getPlayers(gameId).forEach((player) => {
+      io.to(player.socketId).emit("syncGameState", game);
+    });
+  });
+
+  socket.on("sendMoves", ({ gameId, playerId, moves }) => {
+    const opponent = gameManager.getOpponent(gameId, playerId);
+    console.log(moves);
+    if (opponent) {
+      io.to(opponent.socketId).emit("updateBoard", moves);
+    }
+  });
+
   socket.on("disconnect", () => {
     const game = gameManager.endGame(gameObject.id);
     io.emit("endGame", game);

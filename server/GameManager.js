@@ -102,8 +102,9 @@ export default class GameManager {
     const currentGame = this.getGame(id);
     if (currentGame && currentGame.gameState === "started") {
       currentGame.turns++;
-      currentGame.currentPlayer = currentGame.players[turns % 2];
+      currentGame.currentPlayer = currentGame.players[currentGame.turns % 2];
     }
+    return currentGame;
   }
 
   addPointPlayer(id, playerId, points = 1) {
